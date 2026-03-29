@@ -1,0 +1,86 @@
+name: Validate Scripts
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint-powershell:
+    name: Lint PowerShell
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PSScriptAnalyzer
+        shell: pwsh
+        run: Install-Module -Name PSScriptAnalyzer -Force -SkipPublisherCheck
+
+      - name: Analyze Windows scripts
+        shell: pwsh
+        run: |
+          $results = Get-ChildItem -Path scripts/windows -Filter "*.ps1" |
+            ForEach-Object { Invoke-ScriptAnalyzer -Path $_.FullName -Severity Warning,Error }
+          if ($results) {
+            $results | Format-Table -AutoSize
+            exit 1
+          }
+          Write-Host "All PowerShell scripts passed analysis." -ForegroundColor Green
+
+      - name: Check for Unicode in PS1 files
+        shell: pwsh
+        run: |
+          $failed = @()
+          Get-ChildItem -Path scripts/windows -Filter "*.ps1" | ForEach-Object {
+            $bytes = [System.IO.File]::ReadAllBytes($_.FullName)
+            foreach ($b in $bytes) {
+              if ($b -gt 127) {
+                $failed += $_.Name
+                break
+              }
+            }
+          }
+          if ($failed) {
+            Write-Error "Non-ASCII characters found in: $($failed -join ', '). PowerShell 5.1 compatibility requires ASCII-only."
+            exit 1
+          }
+          Write-Host "ASCII check passed." -ForegroundColor Green
+
+  lint-bash:
+    name: Lint Bash Scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Check Linux script
+        run: shellcheck scripts/linux/cfa-safe-delete.sh
+
+      - name: Check macOS script
+        run: shellcheck scripts/macos/cfa-safe-delete.sh
+
+  test-windows-whatif:
+    name: Windows WhatIf Test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create test folder
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path "C:\TestCFADelete\nested\deep" -Force
+          "test content" | Out-File "C:\TestCFADelete\nested\deep\file.txt"
+
+      - name: Run WhatIf (dry run — no deletion)
+        shell: pwsh
+        run: |
+          # WhatIf should never actually delete
+          .\scripts\windows\cfa-safe-delete.ps1 -Path "C:\TestCFADelete" -WhatIf -SkipCFACheck
+          if (-not (Test-Path "C:\TestCFADelete")) {
+            Write-Error "WhatIf deleted files — it should not have!"
+            exit 1
+          }
+          Write-Host "WhatIf test passed — folder still present after dry run." -ForegroundColor Green
