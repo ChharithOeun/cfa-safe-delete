@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/banner.png" alt="Cfa Safe Delete Banner" width="100%"></p>
+
 # cfa-safe-delete
 
 > **Windows Defender Controlled Folder Access (CFA) blocks deletion — even for Administrators.**
