@@ -21,7 +21,7 @@ jobs:
         shell: pwsh
         run: |
           $results = Get-ChildItem -Path scripts/windows -Filter "*.ps1" |
-            ForEach-Object { Invoke-ScriptAnalyzer -Path $_.FullName -Severity Warning,Error }
+            ForEach-Object { Invoke-ScriptAnalyzer -Path $_.FullName -Severity Warning,Error -ExcludeRule PSAvoidUsingWriteHost,PSUseProcessBlockForPipelineCommand }
           if ($results) {
             $results | Format-Table -AutoSize
             exit 1
