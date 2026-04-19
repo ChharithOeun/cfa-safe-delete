@@ -1,5 +1,5 @@
-# shellcheck disable=SC2015
 #!/usr/bin/env bash
+# shellcheck disable=SC2015
 # cfa-safe-delete.sh — macOS equivalent of CFA safe delete
 # Handles: quarantine flags, extended attributes (xattr), SIP, TCC restrictions
 #
